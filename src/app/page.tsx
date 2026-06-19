@@ -1,5 +1,10 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
+import { motion, useReducedMotion } from "framer-motion";
+
+const RISE_EASE = [0.16, 1, 0.3, 1] as const;
 
 const ARC: { n: string; verb: string; desc: string; warm?: boolean }[] = [
   { n: "01", verb: "branch", desc: "fork research/main into two stances" },
@@ -9,6 +14,7 @@ const ARC: { n: string; verb: string; desc: string; warm?: boolean }[] = [
 ];
 
 export default function Landing() {
+  const reduce = useReducedMotion();
   return (
     <div className="flex min-h-screen flex-col">
       {/* topbar */}
@@ -35,14 +41,16 @@ export default function Landing() {
             sizes="(max-width: 768px) 360px, 660px"
             className="object-contain [mask-image:radial-gradient(ellipse_70%_70%_at_50%_48%,#000_58%,transparent_88%)]"
           />
-          {/* the one live warmth — a faint pool behind the doorway */}
-          <div
+          {/* the one live warmth — a faint pool behind the doorway, breathing like distant candlelight */}
+          <motion.div
             aria-hidden
             className="pointer-events-none absolute left-1/2 top-[46%] h-[22%] w-[16%] -translate-x-1/2 -translate-y-1/2 blur-lg"
             style={{
               background:
                 "radial-gradient(ellipse, var(--color-glow-soft), transparent 70%)",
             }}
+            animate={reduce ? undefined : { opacity: [0.82, 1, 0.82], scale: [1, 1.04, 1] }}
+            transition={reduce ? undefined : { duration: 4.5, ease: "easeInOut", repeat: Infinity }}
           />
         </div>
 
@@ -78,13 +86,21 @@ export default function Landing() {
       </main>
 
       {/* ArcStrip — the four real moves; numbered because it IS an ordered pipeline */}
-      <section
-        className="mx-auto mt-8 w-full max-w-[1240px] border-t border-graphite px-6 pb-11 pt-10 sm:px-12 motion-safe:animate-rise"
-        style={{ animationDelay: "600ms" }}
-      >
+      <section className="mx-auto mt-8 w-full max-w-[1240px] border-t border-graphite px-6 pb-11 pt-10 sm:px-12">
         <div className="flex flex-col justify-between gap-7 md:flex-row md:gap-0">
-          {ARC.map((s) => (
-            <div key={s.n} className="flex-1 md:pr-6">
+          {ARC.map((s, i) => (
+            <motion.div
+              key={s.n}
+              className="flex-1 md:pr-6"
+              initial={reduce ? false : { opacity: 0, y: 16 }}
+              whileInView={reduce ? undefined : { opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-10% 0px" }}
+              transition={
+                reduce
+                  ? { duration: 0 }
+                  : { duration: 0.5, ease: RISE_EASE, delay: i * 0.09 }
+              }
+            >
               <div className="font-mono text-[11px] tracking-[0.1em] text-bone-dim">
                 {s.n}
               </div>
@@ -102,7 +118,7 @@ export default function Landing() {
               <p className="mt-1.5 max-w-[170px] text-[13px] leading-snug text-bone-dim">
                 {s.desc}
               </p>
-            </div>
+            </motion.div>
           ))}
         </div>
       </section>
