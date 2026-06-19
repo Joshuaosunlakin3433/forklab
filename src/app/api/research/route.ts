@@ -24,6 +24,7 @@
  */
 import { runDivergence } from "@/lib/graph";
 import { corpusSummary } from "@/lib/corpus";
+import { mockEnabled, mockResearch } from "@/lib/mockData";
 
 // MemForks uses Node-only APIs (Sui client, crypto) and must hit the services
 // on every request rather than be statically prerendered.
@@ -31,6 +32,9 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
+  // DEV-ONLY mock gate — inert unless NODE_ENV !== production AND MOCK_BACKEND=on.
+  if (mockEnabled()) return mockResearch(request);
+
   let question: unknown;
   try {
     ({ question } = await request.json());

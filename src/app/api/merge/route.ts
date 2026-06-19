@@ -17,6 +17,7 @@
  *   }
  */
 import { runMerge } from "@/lib/merge";
+import { mockEnabled, mockMerge } from "@/lib/mockData";
 
 // MemForks uses Node-only APIs (Sui client, crypto) and must hit the services
 // on every request rather than be statically prerendered.
@@ -24,6 +25,9 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
+  // DEV-ONLY mock gate — inert unless NODE_ENV !== production AND MOCK_BACKEND=on.
+  if (mockEnabled()) return mockMerge(request);
+
   let runId: unknown;
   try {
     ({ runId } = await request.json());
@@ -39,8 +43,16 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { verdict, mainBefore, mainAfter } = await runMerge(runId);
-    return Response.json({ runId, verdict, mainBefore, mainAfter });
+    const { verdict, mainBefore, mainAfter, committed, commitError } =
+      await runMerge(runId);
+    return Response.json({
+      runId,
+      verdict,
+      mainBefore,
+      mainAfter,
+      committed,
+      commitError,
+    });
   } catch (err) {
     // Surface the real exception in the dev-server terminal, full stack and all.
     console.error("[/api/merge] merge failed:", err);

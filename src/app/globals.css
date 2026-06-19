@@ -1,26 +1,75 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* ----------------------------------------------------------------
+   forklab design tokens — Tailwind v4 (@theme)
+   Cold graphite substrate, scarce warm glow reserved for the
+   single act of learning (verdict / committed-pro / "learned N").
+   Derived from the real library image: it is effectively monochrome,
+   so warmth here is a deliberate addition, not a color-match.
+------------------------------------------------------------------ */
+@theme {
+  --color-ink-void:      #08080A; /* page base — melts into the image's black edges */
+  --color-ink-shelf:     #141417; /* cards, raised surfaces */
+  --color-ink-corridor:  #1C1C20; /* hover / nested */
+  --color-bone:          #E8E3D8; /* primary text, paper-edge white */
+  --color-bone-dim:      #8C887E; /* secondary text */
+  --color-graphite:      #3C3C42; /* borders, dormant edges, dividers */
+  --color-glow:          #C9A56A; /* THE accent — the act of learning. scarce. */
+  --color-glow-soft:     #C9A56A1F; /* ~0.12 alpha, hex form so bg-glow-soft emits cleanly */
+
+  --font-serif: var(--font-fraunces), Georgia, serif;     /* display, branch titles, verdict word */
+  --font-sans:  var(--font-inter), system-ui, sans-serif; /* all UI copy, claims */
+  --font-mono:  var(--font-jbmono), ui-monospace, monospace; /* runIds, branch paths */
+
+  /* motion — all honest, all reduced-motion gated */
+  --animate-pulse-commit: pulse-commit 1.4s ease-in-out infinite;
+  --animate-glow-in:      glow-in 0.7s ease-out forwards;
+  --animate-rise:         rise 750ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  --animate-rise-sharpen: rise-sharpen 750ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* marching glow dash on an edge while that branch is committing facts */
+@keyframes pulse-commit {
+  0%   { stroke-dashoffset: 0;  opacity: 0.45; }
+  50%  { opacity: 1; }
+  100% { stroke-dashoffset: -16; opacity: 0.45; }
+}
+/* the verdict arriving — the one warm moment */
+@keyframes glow-in {
+  from { opacity: 0; transform: translateY(8px); box-shadow: 0 0 0 rgba(201,165,106,0); }
+  to   { opacity: 1; transform: translateY(0);   box-shadow: 0 0 32px rgba(201,165,106,0.18); }
+}
+@keyframes rise {
+  from { opacity: 0; transform: translateY(28px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+/* headline only — resolves from soft blur in lockstep with its rise */
+@keyframes rise-sharpen {
+  from { opacity: 0; filter: blur(8px); }
+  to   { opacity: 1; filter: blur(0); }
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+html, body {
+  background: var(--color-ink-void);
+  color: var(--color-bone);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* quality floor */
+:focus-visible { outline: 2px solid var(--color-glow); outline-offset: 2px; }
+
+/* Single focus state on the question input: keep the on-brand border-glow and
+   suppress the default outline on THIS input only. The global :focus-visible
+   rule above is unlayered, so it outranks Tailwind's focus:outline-none
+   (utilities layer); this targeted unlayered rule restores one clean focus state
+   without weakening focus-visible anywhere else. */
+.app-input:focus-visible { outline: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
   }
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  /* dashes become static solids; glow-in/rise become instant — countdown stays (it's information) */
 }

@@ -1,5 +1,6 @@
 /**
- * Merge / consensus engine — the second half of the MemForks acceptance gate.
+ * Merge / consensus engine — reconciles a run's diverged branches into a
+ * verdict and commits it back to research/main.
  *
  * Given a runId from a prior /api/research divergence, this reconciles the four
  * opposing branches (hypothesis/pro, hypothesis/con, critique/pro,
@@ -59,6 +60,17 @@ const MergeState = Annotation.Root({
   verdict: Annotation<Verdict>,
   mainBefore: Annotation<string[]>(lastWriteStringArray),
   mainAfter: Annotation<string[]>(lastWriteStringArray),
+  // Whether the verdict's commit-back into research/main actually landed
+  // on-chain. The verdict is computed BEFORE the commit, so it exists even when
+  // the write fails — these two fields carry that honest signal out of the node.
+  committed: Annotation<boolean>({
+    reducer: (_prev, next) => next,
+    default: () => false,
+  }),
+  commitError: Annotation<string | undefined>({
+    reducer: (_prev, next) => next,
+    default: () => undefined,
+  }),
 });
 
 type MergeStateType = typeof MergeState.State;
@@ -345,7 +357,18 @@ async function reconcile(
     ...verdict.accepted.map((a) => `ACCEPTED: ${a}`),
     ...verdict.rejected.map((r) => `REJECTED: ${r}`),
   ];
-  await commitFacts(mainBranch, verdictFacts, "merge: consensus verdict");
+  // The on-chain commit-back is the ONLY step that can fail without
+  // invalidating the verdict (which is already computed above). Catch ONLY this
+  // write so an Enoki/sponsor error still returns the real verdict + mainBefore
+  // instead of throwing them away. We do NOT fabricate a mainAfter on failure —
+  // nothing persisted, so we skip the post-commit recall entirely.
+  try {
+    await commitFacts(mainBranch, verdictFacts, "merge: consensus verdict");
+  } catch (err) {
+    const commitError = err instanceof Error ? err.message : String(err);
+    console.error("[merge] commit-back to research/main failed:", err);
+    return { verdict, mainBefore, mainAfter: [], committed: false, commitError };
+  }
 
   // AFTER: re-recall research/main to prove it changed. commit→recall has
   // indexing lag (hit live: empty right after commit), and this is the
@@ -362,7 +385,7 @@ async function reconcile(
     });
   }
 
-  return { verdict, mainBefore, mainAfter };
+  return { verdict, mainBefore, mainAfter, committed: true };
 }
 
 // ─── Graph wiring ─────────────────────────────────────────────────────────────
@@ -415,9 +438,13 @@ function getCompiledMergeGraph() {
  * research/main, and return the verdict plus research/main before and after.
  * Threaded by `merge-<runId>` so the checkpointer namespaces its checkpoints.
  */
-export async function runMerge(
-  runId: string,
-): Promise<{ verdict: Verdict; mainBefore: string[]; mainAfter: string[] }> {
+export async function runMerge(runId: string): Promise<{
+  verdict: Verdict;
+  mainBefore: string[];
+  mainAfter: string[] | null;
+  committed: boolean;
+  commitError?: string;
+}> {
   const graph = await getCompiledMergeGraph();
   const finalState = await graph.invoke(
     { runId },
@@ -426,6 +453,10 @@ export async function runMerge(
   return {
     verdict: finalState.verdict,
     mainBefore: finalState.mainBefore,
-    mainAfter: finalState.mainAfter,
+    // Surface null (not the empty placeholder) when the commit-back didn't land,
+    // so the API and UI never present a fabricated post-merge state.
+    mainAfter: finalState.committed ? finalState.mainAfter : null,
+    committed: finalState.committed,
+    commitError: finalState.commitError,
   };
 }
