@@ -43,7 +43,7 @@ The fastest way to see forklab work is mock mode — canned dev data, no backend
 setup, no wallet:
 
 ```bash
-git clone <your-fork-url> forklab
+git clone https://github.com/Joshuaosunlakin3433/forklab.git
 cd forklab
 npm install
 echo "MOCK_BACKEND=on" >> .env.local
@@ -155,4 +155,4 @@ the source documents are seeded. Specifically:
 
 ## License
 
-`TODO: add a LICENSE file at the repo root and reference it here.`
+Released under the [MIT License](LICENSE).
